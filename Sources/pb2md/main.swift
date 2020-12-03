@@ -7,8 +7,11 @@
 
 import Foundation
 import Cocoa
+import Darwin
 
 let pasteboard = NSPasteboard.general
+
+let addBlockquotes = CommandLine.arguments.contains("--blockquote")
 
 struct Pboard: Codable {
     var html: String?
@@ -68,7 +71,15 @@ func html2markdown(string : String) -> String {
     
     let pandoc = Process()
     pandoc.executableURL = URL(fileURLWithPath: "/usr/local/bin/pandoc")
-    pandoc.arguments = ["--from=html", "--to=markdown_strict"]
+    pandoc.arguments = [
+        // custom lua filter to clean out more stuff, see it for details
+        //"--lua-filter="
+        // use native_divs and native_spans
+        // this will help keep out divs and spans, and classes on them
+        "--from=html-native_divs-native_spans",
+        // markdown strict should help keep a lot of random elements out of the output
+        "--to=markdown_strict"
+    ]
     pandoc.standardInput = pandocPipe
     pandoc.standardOutput = completePipe
     
@@ -82,23 +93,52 @@ func html2markdown(string : String) -> String {
     return ""
 }
 
+func blockquote(string : String) -> String {
+    var lines = [String]()
+    string.enumerateLines { (line, stop) -> () in
+        lines.append("> \(line)")
+    }
+
+    return lines.joined(separator: "\n")
+}
+
 //print(dump(originalPboard))
 
 var updatedPboard = Pboard()
 
 if originalPboard.rtf != nil {
-    print(originalPboard.rtf!)
+    // print(originalPboard.rtf!)
     print("Converting rtf to html to md... ", terminator: "")
     updatedPboard.html = rdf2html(string: originalPboard.rtf!)
     updatedPboard.text = html2markdown(string: updatedPboard.html!)
+    if (addBlockquotes) {
+        updatedPboard.text = blockquote(string: updatedPboard.text!)
+    }
+
     print("done")
 } else if originalPboard.html != nil {
     print(originalPboard.html!)
     print("Converting html to md... ", terminator: "")
     updatedPboard.text = html2markdown(string: originalPboard.html!)
+    if (addBlockquotes) {
+        updatedPboard.text = blockquote(string: updatedPboard.text!)
+    }
     print("done")
+} else if (originalPboard.text != nil) {
+    let text = originalPboard.text!
+    // first character < ? assume HTML
+    if (text[text.startIndex] == "<") {
+        updatedPboard.text = html2markdown(string: originalPboard.text!)
+        if (addBlockquotes) {
+            updatedPboard.text = blockquote(string: updatedPboard.text!)
+        }
+    } else if (addBlockquotes) {
+        print("Adding blockquotes...", terminator: "")
+        updatedPboard.text = blockquote(string: originalPboard.text!)
+    }
 } else {
     print("Nothing to convert.")
+    exit(1)
 }
 
 
