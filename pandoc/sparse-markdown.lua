@@ -57,27 +57,43 @@ end
 --  return elem.content
 -- end
 
--- function Span(elem)
---   return rebuild_without_noise(elem)
--- end
 
--- function Cite(elem)
---   return rebuild_without_noise(elem)
--- end
 
--- function Header(elem)
---   return rebuild_without_noise(elem)
--- end
-
-function Link(elem)
-  if elem.attr then
-    if elem.attr.classes and #elem.attr.classes > 0 then
-      elem.attr.classes = {}
-    end
-
-    if elem.attr.identifier and #elem.attr.identifier > 0 then
-      elem.attr.identifier = nil
-    end
+function declassify(elem)
+  if elem.attr.classes and #elem.attr.classes > 0 then
+    elem.attr.classes = {}
   end
   return elem
+end
+
+function deidentify(elem)
+  if elem.attr.identifier and #elem.attr.identifier > 0 then
+    elem.attr.identifier = nil
+  end
+  return elem
+end
+
+function clean(elem)
+  if elem.attr then
+    declassify(elem)
+    deidentify(elem)
+  end
+  return elem
+end
+
+
+function Cite(elem)
+  return clean(elem)
+end
+
+function Header(elem)
+  return clean(elem)
+end
+
+function Link(elem)
+  return clean(elem)
+end
+
+function Span(elem)
+  return clean(elem)
 end

@@ -1,3 +1,1 @@
-# pb2md
-
-A description of this package.
+# pb2md - macOS pasteboard to markdown utility

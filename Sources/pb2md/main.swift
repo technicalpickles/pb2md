@@ -73,7 +73,7 @@ func html2markdown(string : String) -> String {
     pandoc.executableURL = URL(fileURLWithPath: "/usr/local/bin/pandoc")
     pandoc.arguments = [
         // custom lua filter to clean out more stuff, see it for details
-        //"--lua-filter="
+        "--lua-filter=/Users/technicalpickles/src/pb2md/pandoc/sparse-markdown.lua",
         // use native_divs and native_spans
         // this will help keep out divs and spans, and classes on them
         "--from=html-native_divs-native_spans",

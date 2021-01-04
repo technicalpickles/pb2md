@@ -1,0 +1,4 @@
+--quiet yes
+--clean yes
+--gdoc yes
+--drop-empty-elements yes
