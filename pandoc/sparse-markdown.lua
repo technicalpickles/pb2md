@@ -73,27 +73,43 @@ function deidentify(elem)
   return elem
 end
 
+function destyleize(elem)
+  if elem.attr.attributes then
+    elem.attr.attributes.style = nil
+  end
+  return elem
+end
+
 function clean(elem)
   if elem.attr then
     declassify(elem)
     deidentify(elem)
+    destyleize(elem)
   end
   return elem
 end
 
 
-function Cite(elem)
+function Inline(elem)
   return clean(elem)
 end
 
-function Header(elem)
+function Block(elem)
   return clean(elem)
 end
 
-function Link(elem)
-  return clean(elem)
-end
+-- function Cite(elem)
+--   return clean(elem)
+-- end
 
-function Span(elem)
-  return clean(elem)
-end
+-- function Header(elem)
+--   return clean(elem)
+-- end
+
+-- function Link(elem)
+--   return clean(elem)
+-- end
+
+-- function Span(elem)
+--   return clean(elem)
+-- end
