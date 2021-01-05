@@ -12,6 +12,7 @@ import Darwin
 let pasteboard = NSPasteboard.general
 
 let addBlockquotes = CommandLine.arguments.contains("--blockquote")
+let verbose = CommandLine.arguments.contains("--verbose")
 
 struct Pboard: Codable {
     var html: String?
@@ -107,23 +108,27 @@ func blockquote(string : String) -> String {
 var updatedPboard = Pboard()
 
 if originalPboard.rtf != nil {
-    // print(originalPboard.rtf!)
-    print("Converting rtf to html to md... ", terminator: "")
+    // if (verbose) {
+    //     print(originalPboard.rtf!)
+    // }
+
     updatedPboard.html = rdf2html(string: originalPboard.rtf!)
     updatedPboard.text = html2markdown(string: updatedPboard.html!)
     if (addBlockquotes) {
         updatedPboard.text = blockquote(string: updatedPboard.text!)
     }
-
-    print("done")
+    print("Converted RTF to HTML to Markdown.")
 } else if originalPboard.html != nil {
-    print(originalPboard.html!)
-    print("Converting html to md... ", terminator: "")
+    if (verbose) {
+        print(originalPboard.html!)
+    }
+
     updatedPboard.text = html2markdown(string: originalPboard.html!)
     if (addBlockquotes) {
         updatedPboard.text = blockquote(string: updatedPboard.text!)
     }
-    print("done")
+
+    print("Converted HTML to Markdown", terminator: "")
 } else if (originalPboard.text != nil) {
     let text = originalPboard.text!
     // first character < ? assume HTML
@@ -133,7 +138,9 @@ if originalPboard.rtf != nil {
             updatedPboard.text = blockquote(string: updatedPboard.text!)
         }
     } else if (addBlockquotes) {
-        print("Adding blockquotes...", terminator: "")
+        if (verbose) {
+            print("Added blockquotes to Markdown")
+        }
         updatedPboard.text = blockquote(string: originalPboard.text!)
     }
 } else {
@@ -141,13 +148,17 @@ if originalPboard.rtf != nil {
     exit(1)
 }
 
-
 // TODO Maybe check if originalPboard.text starts with HTML tags?
 
 // only clear and update the pasteboard if something was
 if updatedPboard.text != nil {
-    print(updatedPboard.text!)
+    if (verbose) {
+        print(updatedPboard.text!)
+
+    }
     
     pasteboard.clearContents()
     pasteboard.setString(updatedPboard.text!, forType: .string)
+} else {
+    print("Nothing to do.")
 }
