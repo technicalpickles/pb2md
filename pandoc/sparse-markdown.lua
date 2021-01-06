@@ -17,13 +17,12 @@ function no_children(elem)
   -- return not elem.content or elem.content == "" -- or next(elem) ~= nil
 end
 
-function all_whitespace_children(elem)
-  return false
-  -- elem.content.filter(
-  --   function(e)
-  --     return true
-  --   end
-  -- )
+function isWhitespace(elem)
+  if not elem then
+    return true
+  end
+
+  return elem.t == 'Space' or elem.t == 'LineBreak' or (elem.t == 'String' and elem.text == '')
 end
 
 function rebuild_without_noise(elem)
@@ -68,7 +67,14 @@ end
 
 function deidentify(elem)
   if elem.attr.identifier and #elem.attr.identifier > 0 then
-    elem.attr.identifier = nil
+    elem.attr.identifier = ""
+  end
+  return elem
+end
+
+function dedir(elem)
+  if elem.attr.dir and #elem.attr.dir > 0 and elem.attr.dir ~= "auto" then
+    elem.attr.dir = "auto"
   end
   return elem
 end
@@ -89,6 +95,28 @@ function clean(elem)
   return elem
 end
 
+function cleanList(elem)
+  elem = clean(elem)
+
+  -- some list items end up wrapped up in a Para, instead of being just Plain
+  return replaceParaWithPlain(elem)
+end
+
+-- function OrderedList(elem)
+--   return cleanList(elem)
+-- end
+
+-- function BulletList(elem)
+--   return cleanList(elem)
+-- end
+
+function replaceParaWithPlain(elem)
+  return pandoc.walk_block(elem, {
+    Para = function(el)
+      return pandoc.Plain(el.content)
+    end
+  })
+end
 
 function Inline(elem)
   return clean(elem)
@@ -98,18 +126,9 @@ function Block(elem)
   return clean(elem)
 end
 
--- function Cite(elem)
---   return clean(elem)
--- end
-
--- function Header(elem)
---   return clean(elem)
--- end
-
 -- function Link(elem)
---   return clean(elem)
--- end
+--   local whitespaceElems = elem.c:filter(isWhitespace)
+--   -- if elem.
 
--- function Span(elem)
---   return clean(elem)
+--   return Block(elem)
 -- end
