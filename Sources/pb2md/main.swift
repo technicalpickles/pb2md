@@ -4,8 +4,6 @@ import Cocoa
 import Foundation
 import Darwin
 
-let pasteboard = NSPasteboard.general
-
 let addBlockquotes = CommandLine.arguments.contains("--blockquote")
 let verbose = CommandLine.arguments.contains("--verbose")
 
@@ -50,6 +48,7 @@ if updatedPboard.text != nil {
         print(updatedPboard.text!)
     }
     
+    let pasteboard = NSPasteboard.general
     pasteboard.clearContents()
     pasteboard.setString(updatedPboard.text!, forType: .string)
 } else {
