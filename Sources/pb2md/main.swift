@@ -14,12 +14,6 @@ let pasteboard = NSPasteboard.general
 let addBlockquotes = CommandLine.arguments.contains("--blockquote")
 let verbose = CommandLine.arguments.contains("--verbose")
 
-struct Pboard: Codable {
-    var html: String?
-    var text: String?
-    var rtf: String?
-}
-
 var originalPboard = Pboard()
 
 // get contents of general pasteboard
@@ -94,6 +88,34 @@ func html2markdown(string : String) -> String {
     return ""
 }
 
+func markdownLint(string : String) -> String {
+    let markdownlintPipe = Pipe()
+    let markdownlintPipeHandle = markdownlintPipe.fileHandleForWriting
+    markdownlintPipeHandle.write(string.data(using: .utf8)!)
+    try! markdownlintPipeHandle.close()
+
+    let completePipe = Pipe()
+    
+    let markdownlint = Process()
+    markdownlint.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+    markdownlint.arguments = [
+        "markdownlint",
+        "--stdin",
+        "--fix"
+    ]
+    markdownlint.standardInput = markdownlintPipe
+    markdownlint.standardOutput = completePipe
+    
+    do{
+      try markdownlint.run()
+      let data = completePipe.fileHandleForReading.readDataToEndOfFile()
+      if let output = String(data: data, encoding: String.Encoding.utf8) {
+        return output
+      }
+    } catch {}
+    return ""
+}
+
 func blockquote(string : String) -> String {
     var lines = [String]()
     string.enumerateLines { (line, stop) -> () in
@@ -114,9 +136,6 @@ if originalPboard.rtf != nil {
 
     updatedPboard.html = rdf2html(string: originalPboard.rtf!)
     updatedPboard.text = html2markdown(string: updatedPboard.html!)
-    if (addBlockquotes) {
-        updatedPboard.text = blockquote(string: updatedPboard.text!)
-    }
     print("Converted RTF to HTML to Markdown.")
 } else if originalPboard.html != nil {
     if (verbose) {
@@ -124,37 +143,32 @@ if originalPboard.rtf != nil {
     }
 
     updatedPboard.text = html2markdown(string: originalPboard.html!)
-    if (addBlockquotes) {
-        updatedPboard.text = blockquote(string: updatedPboard.text!)
-    }
-
-    print("Converted HTML to Markdown", terminator: "")
+    print("Converted HTML to Markdown")
 } else if (originalPboard.text != nil) {
     let text = originalPboard.text!
     // first character < ? assume HTML
     if (text[text.startIndex] == "<") {
+        print("Converted HTML (stored as text) to Markdown")
         updatedPboard.text = html2markdown(string: originalPboard.text!)
-        if (addBlockquotes) {
-            updatedPboard.text = blockquote(string: updatedPboard.text!)
-        }
     } else if (addBlockquotes) {
-        if (verbose) {
-            print("Added blockquotes to Markdown")
-        }
-        updatedPboard.text = blockquote(string: originalPboard.text!)
+        print("Added blockquotes to Markdown")
+        // quoting is handled at the end
+        updatedPboard.text = originalPboard.text
     }
 } else {
     print("Nothing to convert.")
     exit(1)
 }
 
-// TODO Maybe check if originalPboard.text starts with HTML tags?
-
 // only clear and update the pasteboard if something was
 if updatedPboard.text != nil {
+    if (addBlockquotes) {
+        updatedPboard.text = blockquote(string: updatedPboard.text!)
+    }
+    updatedPboard.text = markdownLint(string: updatedPboard.text!)
+
     if (verbose) {
         print(updatedPboard.text!)
-
     }
     
     pasteboard.clearContents()
