@@ -102,13 +102,13 @@ function cleanList(elem)
   return replaceParaWithPlain(elem)
 end
 
--- function OrderedList(elem)
---   return cleanList(elem)
--- end
+function OrderedList(elem)
+  return cleanList(elem)
+end
 
--- function BulletList(elem)
---   return cleanList(elem)
--- end
+function BulletList(elem)
+  return cleanList(elem)
+end
 
 function replaceParaWithPlain(elem)
   return pandoc.walk_block(elem, {
