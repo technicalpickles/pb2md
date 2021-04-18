@@ -24,30 +24,53 @@ func getCurrentPasteboard() -> Pboard {
   return originalPboard
 }
 
-func rdf2html(string : String) -> String {
-    let textUtilPipe = Pipe()
-    let textUtilPipeHandle = textUtilPipe.fileHandleForWriting
-    textUtilPipeHandle.write(string.data(using: .utf8)!)
-    try! textUtilPipeHandle.close()
+func rtf2htmlProcess() -> Process {
+  let textutil = Process()
+  textutil.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+  textutil.arguments = ["textutil", "-convert", "html", "-stdin", "-stdout"]
 
-    let completePipe = Pipe()
-    
-    let textutil = Process()
-    textutil.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-    textutil.arguments = ["textutil", "-convert", "html", "-stdin", "-stdout"]
-    textutil.standardInput = textUtilPipe
-    textutil.standardOutput = completePipe
-    
-    do{
-      try textutil.run()
-      let data = completePipe.fileHandleForReading.readDataToEndOfFile()
-      if let output = String(data: data, encoding: String.Encoding.utf8) {
-        return output
-        
-      }
-    } catch {}
-    return ""
+  return textutil
 }
+
+func rdf2html(string : String) -> String {
+  let input = Pipe()
+
+  let inputHandle = input.fileHandleForWriting
+  inputHandle.write(string.data(using: .utf8)!)
+  try! inputHandle.close()
+
+  let completePipe = Pipe()
+  let textutil = rtf2htmlProcess()
+  textutil.standardInput = input
+  textutil.standardOutput = completePipe
+    
+  do {
+    try textutil.run()
+    let data = completePipe.fileHandleForReading.readDataToEndOfFile()
+    if let output = String(data: data, encoding: String.Encoding.utf8) {
+      return output
+      
+    }
+  } catch {}
+  return ""
+}
+
+func html2markdownProcess() -> Process {
+  let pandoc = Process()
+  pandoc.executableURL = URL(fileURLWithPath: "/usr/local/bin/pandoc")
+  pandoc.arguments = [
+    // custom lua filter to clean out more stuff, see it for details
+    "--lua-filter=/Users/technicalpickles/src/pb2md/pandoc/sparse-markdown.lua",
+    // use native_divs and native_spans
+    // this will help keep out divs and spans, and classes on them
+    "--from=html-native_divs-native_spans",
+    // markdown strict should help keep a lot of random elements out of the output
+    "--to=markdown_strict"
+  ]
+
+  return pandoc
+}
+
 func html2markdown(string : String) -> String {
     let pandocPipe = Pipe()
     let pandocPipeHandle = pandocPipe.fileHandleForWriting
@@ -56,17 +79,7 @@ func html2markdown(string : String) -> String {
 
     let completePipe = Pipe()
     
-    let pandoc = Process()
-    pandoc.executableURL = URL(fileURLWithPath: "/usr/local/bin/pandoc")
-    pandoc.arguments = [
-        // custom lua filter to clean out more stuff, see it for details
-        "--lua-filter=/Users/technicalpickles/src/pb2md/pandoc/sparse-markdown.lua",
-        // use native_divs and native_spans
-        // this will help keep out divs and spans, and classes on them
-        "--from=html-native_divs-native_spans",
-        // markdown strict should help keep a lot of random elements out of the output
-        "--to=markdown_strict"
-    ]
+    let pandoc = html2markdownProcess()
     pandoc.standardInput = pandocPipe
     pandoc.standardOutput = completePipe
     
@@ -80,6 +93,17 @@ func html2markdown(string : String) -> String {
     return ""
 }
 
+func markdownLintProcess() -> Process {
+  let markdownlint = Process()
+  markdownlint.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+  markdownlint.arguments = [
+      "markdownlint",
+      "--stdin",
+      "--fix"
+  ]
+  return markdownlint
+}
+
 func markdownLint(string : String) -> String {
     let markdownlintPipe = Pipe()
     let markdownlintPipeHandle = markdownlintPipe.fileHandleForWriting
@@ -88,13 +112,7 @@ func markdownLint(string : String) -> String {
 
     let completePipe = Pipe()
     
-    let markdownlint = Process()
-    markdownlint.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-    markdownlint.arguments = [
-        "markdownlint",
-        "--stdin",
-        "--fix"
-    ]
+    let markdownlint = markdownLintProcess()
     markdownlint.standardInput = markdownlintPipe
     markdownlint.standardOutput = completePipe
     
@@ -107,6 +125,37 @@ func markdownLint(string : String) -> String {
     } catch {}
     return ""
 }
+
+
+func blockquoteProcess() -> Process {
+  let sed = Process()
+  sed.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+  sed.arguments = [
+    "sed",
+    "s/^/> /",
+  ]
+
+  return sed
+}
+
+// func pipeline(pboard : Pboard) -> Array<Process> {
+//   var processes = Array<Process>()
+
+//   var input = String()
+//   if pboard.rtf != nil {
+//     processes.append(rtf2htmlProcess())
+//     input = pboard.rtf!
+//   }
+  
+//   let text = pboard.text!
+//   // first character < ? assume HTML
+//   if (text[text.startIndex] == "<") {
+//   }
+
+//   if pboard.rtf != nil || pboard.html != nil || text[text.startIndex] == "<"
+
+//   return processes
+// }
 
 func blockquote(string : String) -> String {
     var lines = [String]()
